@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #messageContainer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .server-message {
+            background-color: #e8f5e9;
+        }
+        .client-message {
+            background-color: #e3f2fd;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        .status {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .disconnected {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket测试页面</h1>
+    <div id="status" class="status disconnected">未连接</div>
+    <div id="messageContainer"></div>
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="输入消息..." />
+        <button onclick="sendMessage()">发送</button>
+    </div>
+
+    <script>
+        let ws;
+        const messageContainer = document.getElementById('messageContainer');
+        const messageInput = document.getElementById('messageInput');
+        const statusDiv = document.getElementById('status');
+
+        function connect() {
+            ws = new WebSocket('ws://' + window.location.host + '/ws');
+
+            ws.onopen = function() {
+                statusDiv.textContent = '已连接';
+                statusDiv.className = 'status connected';
+                addMessage('系统消息：WebSocket连接已建立', 'server-message');
+            };
+
+            ws.onmessage = function(event) {
+                addMessage(event.data, 'server-message');
+            };
+
+            ws.onclose = function() {
+                statusDiv.textContent = '未连接';
+                statusDiv.className = 'status disconnected';
+                addMessage('系统消息：WebSocket连接已断开', 'server-message');
+                setTimeout(connect, 5000); // 5秒后尝试重连
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+                addMessage('系统消息：连接发生错误', 'server-message');
+            };
+        }
+
+        function sendMessage() {
+            if (!messageInput.value.trim()) return;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(messageInput.value);
+                addMessage('发送消息：' + messageInput.value, 'client-message');
+                messageInput.value = '';
+            } else {
+                addMessage('系统消息：连接已断开，无法发送消息', 'server-message');
+            }
+        }
+
+        function addMessage(message, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message ' + className;
+            messageContainer.appendChild(messageDiv);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        // 按回车发送消息
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 页面加载完成后连接WebSocket
+        window.onload = connect;
+    </script>
+</body>
+</html>
